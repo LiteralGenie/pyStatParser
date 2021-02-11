@@ -4,21 +4,21 @@ from six.moves import filter, range
 from six import text_type as str
 string_types = str
 
-from stat_parser.treebanks.parse import parse_treebank
-from stat_parser.word_classes import is_cap_word
+from .parse import parse_treebank
+from ..word_classes import is_cap_word
 
 
 def chomsky_normal_form(tree):
     if not isinstance(tree, list):
         raise Exception("Rule should be a list")
-    
+
     n = len(tree)
     if n < 2:
         raise Exception("Rule should have at least two items: %s" % str(tree))
-    
+
     if not isinstance(tree[0], string_types):
         raise Exception("Root should be a string: %s" % str(tree))
-    
+
     if n == 2:
         # X -> word
         if isinstance(tree[1], list):
@@ -29,7 +29,7 @@ def chomsky_normal_form(tree):
         else:
             if not isinstance(tree[1], string_types):
                 raise Exception("Terminal should be a string: %s" % str(tree))
-    
+
     elif n == 3:
         # X -> Y1, Y2
         for i in (1, 2):
@@ -40,7 +40,7 @@ def chomsky_normal_form(tree):
                 if not isinstance(tree[i], list):
                     raise Exception("Non-terminal should be a list: %s" % str(tree))
                 chomsky_normal_form(tree[i])
-    
+
     else:
         # (3) Normalise illegal n-ary rule
         tree[2] = [tree[0]] + tree[2:]
@@ -79,7 +79,7 @@ def null_elements_filter(node):
         elif n == 2:
             if '-NONE-' in node[0]:
                 return False
-    
+
     return True
 
 
@@ -89,21 +89,21 @@ class UncertainParsing(Exception):
 
 def prune_null_elements(tree, parents):
     tree[:] = list(filter(null_elements_filter, tree))
-    
+
     n = len(tree)
     if n < 2:
         prune_null_elements(parents[id(tree)], parents)
-    
+
     else:
         root = tree[0]
-        
+
         if not isinstance(tree[0], string_types):
             import ipdb; ipdb.set_trace()
             raise Exception("Root should be a string: %s" % str(tree))
-        
+
         if root == 'X':
             raise UncertainParsing()
-        
+
         for node in tree[1:]:
             if isinstance(node, list):
                 parents[id(node)] = tree

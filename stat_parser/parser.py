@@ -8,19 +8,19 @@ from six.moves import range
 
 try:
     from nltk import Tree
-    
+
     def nltk_tree(t):
         return Tree(t[0], [c if isinstance(c, str) else nltk_tree(c) for c in t[1:]])
-    
+
     nltk_is_available = True
 
 except ImportError:
     nltk_is_available = False
 
-from stat_parser.learn import build_model
-from stat_parser.tokenizer import PennTreebankTokenizer
-from stat_parser.treebanks.normalize import un_chomsky_normal_form
-from stat_parser.word_classes import is_cap_word
+from .learn import build_model
+from .tokenizer import PennTreebankTokenizer
+from .treebanks.normalize import un_chomsky_normal_form
+from .word_classes import is_cap_word
 
 
 def argmax(lst):
@@ -41,7 +41,7 @@ def backtrace(back, bp):
 
 def CKY(pcfg, norm_words):
     x, n = [("", "")] + norm_words, len(norm_words)
-    
+
     # Charts
     pi = defaultdict(float)
     bp = defaultdict(tuple)
@@ -51,7 +51,7 @@ def CKY(pcfg, norm_words):
             if (X, norm) in pcfg.q1:
                 pi[i, i, X] = pcfg.q1[X, norm]
                 bp[i, i, X] = (X, word, i, i)
-    
+
     # Dynamic program
     for l in range(1, n):
         for i in range(1, n-l+1):
@@ -67,10 +67,10 @@ def CKY(pcfg, norm_words):
                             if pi[i  , s, Y] > 0.0
                             if pi[s+1, j, Z] > 0.0
                 ])
-                
+
                 if score > 0.0:
                     bp[i, j, X], pi[i, j, X] = back, score
-    
+
     _, top = max([(pi[1, n, X], bp[1, n, X]) for X in pcfg.N])
     return backtrace(top, bp)
 
@@ -79,20 +79,20 @@ class Parser(object):
     def __init__(self, pcfg=None):
         if pcfg is None:
             pcfg = build_model()
-        
+
         self.pcfg = pcfg
         self.tokenizer = PennTreebankTokenizer()
-        
+
         if nltk_is_available:
             self.parse = self.nltk_parse
         else:
             self.parse = self.raw_parse
-    
+
     def norm_parse(self, sentence):
         words = self.tokenizer.tokenize(sentence)
         if is_cap_word(words[0]):
             words[0] = words[0].lower()
-        
+
         norm_words = []
         for word in words:
             if isinstance(word, tuple):
@@ -102,12 +102,12 @@ class Parser(object):
                 # rare words normalization
                 norm_words.append((self.pcfg.norm_word(word), word))
         return CKY(self.pcfg, norm_words)
-    
+
     def raw_parse(self, sentence):
         tree = self.norm_parse(sentence)
         un_chomsky_normal_form(tree)
         return tree
-    
+
     def nltk_parse(self, sentence):
         return nltk_tree(self.raw_parse(sentence))
 
